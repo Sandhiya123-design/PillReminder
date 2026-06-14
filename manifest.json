@@ -1,0 +1,20 @@
+{
+  "name": "Smart Pill Reminder",
+  "short_name": "PillReminder",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#4a90e2",
+  "theme_color": "#4a90e2",
+  "icons": [
+    {
+      "src": "Gemini_Generated_Image_itxv59itxv59itxv.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "Gemini_Generated_Image_itxv59itxv59itxv.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

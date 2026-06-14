@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PillReminder</title>
+
+  <!-- Favicon & App Icon -->
+  <link rel="icon" type="image/png" href="Gemini_Generated_Image_itxv59itxv59itxv.png">
+  <link rel="apple-touch-icon" href="Gemini_Generated_Image_itxv59itxv59itxv.png">
+<!-- OneSignal Push Notification -->
+<script src="https://cdn.onesignal.com/sdks/OneSignalSDK.js" async=""></script>
+<script>
+  window.OneSignal = window.OneSignal || [];
+  OneSignal.push(function() {
+    OneSignal.init({
+      appId: "a9f05367-a5c5-4490-8eab-ecff31bdd124", // Your App ID
+    });
+  });
+</script>
+
+
+  <style>
+    /* === Gradient Background === */
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      text-align: center;
+      background: linear-gradient(135deg, #4a90e2, #50c9c3, #96deda);
+      min-height: 100vh;
+      background-attachment: fixed;
+    }
+
+    /* Header with icon + title side by side */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      background-color: rgba(0, 0, 0, 0.4);
+      padding: 15px 0;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    }
+
+    .header img {
+      width: 50px;
+      height: 50px;
+      border-radius: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+
+    .header h1 {
+      color: white;
+      font-size: 24px;
+      margin: 0;
+      text-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    }
+
+    /* Container */
+    .schedule-container {
+      width: 90%;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    /* Card UI */
+    .pill-card {
+      background-color: white;
+      padding: 20px;
+      margin-bottom: 15px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      text-align: left;
+      border-left: 5px solid;
+      transition: transform 0.2s, box-shadow 0.3s;
+      box-sizing: border-box;
+    }
+    .pill-card:hover { transform: translateY(-2px); }
+
+    .pill-card[data-timeofday="morning"] { border-color: #f5c71a; }
+    .pill-card[data-timeofday="afternoon"] { border-color: #4CAF50; }
+    .pill-card[data-timeofday="night"] { border-color: #3f51b5; }
+
+    .pill-time {
+      font-size: 18px;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 5px;
+      display: block;
+    }
+    .pill-dose {
+      font-size: 14px;
+      color: #777;
+      margin-bottom: 15px;
+      display: block;
+    }
+
+    /* Button */
+    .take-button {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      color: white;
+      font-weight: bold;
+      transition: background-color 0.3s;
+      background-color: #4a90e2;
+    }
+    .take-button:hover:not(:disabled) { background-color: #3a7bd2; }
+
+    /* States */
+    .taken-state { background-color: #e8f5e9; border-left-color: #4CAF50 !important; }
+    .taken-state .pill-time { color: #4CAF50; }
+    .taken-button { background-color: #a5d6a7; cursor: default; }
+
+    .next-pill-state { box-shadow: 0 0 15px rgba(74, 144, 226, 0.8); border: 2px solid #4a90e2; transform: scale(1.02); }
+    .due-state { box-shadow: 0 0 10px rgba(255, 165, 0, 0.6); border-left: 5px solid orange !important; }
+    .due-state .pill-time { color: #d88900; }
+    .missed-state { background-color: #ffebee; border-left: 5px solid #F44336 !important; }
+    .missed-state .pill-time { color: #F44336; }
+
+    /* === Toast Notification (top like WhatsApp) === */
+    #toast {
+      visibility: hidden;
+      min-width: 280px;
+      color: #fff;
+      text-align: center;
+      border-radius: 10px;
+      padding: 14px;
+      position: fixed;
+      z-index: 1000;
+      left: 50%;
+      top: 0;
+      transform: translateX(-50%) translateY(-100%);
+      font-size: 15px;
+      opacity: 0;
+      transition: all 0.5s ease-in-out;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+    #toast.show {
+      visibility: visible;
+      opacity: 1;
+      transform: translateX(-50%) translateY(20px); /* slide down */
+    }
+    #toast.success { background-color: #4CAF50; }
+    #toast.warning { background-color: #ff9800; }
+    #toast.error { background-color: #f44336; }
+  </style>
+</head>
+<body onload="requestNotificationPermission()">
+
+  <!-- Header with icon and title -->
+  <div class="header">
+    <img src="Gemini_Generated_Image_itxv59itxv59itxv.png" alt="PillReminder Icon">
+    <h1>Smart Pill Reminder</h1>
+  </div>
+
+  <div class="schedule-container">
+    <button onclick="requestNotificationPermission()" 
+            style="padding: 10px; margin-bottom: 10px; border-radius: 5px; background-color: #ff9800; color: white; border: none;">
+      🔔 Enable Reminders
+    </button>
+
+    <!-- ✅ Quick Demo Notification Button -->
+    <button onclick="sendNotification('Test Reminder', 'This is how your pill reminder will look!')" 
+            style="padding: 10px; margin-bottom: 20px; border-radius: 5px; background-color: #4CAF50; color: white; border: none;">
+      🧪 Test Notification
+    </button>
+  </div>
+
+  <div class="schedule-container" id="scheduleList"></div>
+
+  <!-- Toast element -->
+  <div id="toast"></div>
+
+  <script>
+    // ✅ Updated schedule with simple names & correct times
+    const pillSchedule = [
+      { id: 'morningBefore', name: 'Morning Pill', dose: '1 Tablet', time: '7:30 AM', time24: 730, meal: 'Before Breakfast', dayPart: 'morning', icon: '☀️' },
+      { id: 'morningAfter', name: 'Vitamin', dose: '1 Capsule', time: '9:00 AM', time24: 900, meal: 'After Breakfast', dayPart: 'morning', icon: '☀️' },
+      { id: 'lunchBefore', name: 'Energy Tablet', dose: '1 Tablet', time: '12:00 PM', time24: 1200, meal: 'Before Lunch', dayPart: 'afternoon', icon: '🍽️' },
+      { id: 'lunchAfter', name: 'Digestive Capsule', dose: '1 Capsule', time: '2:00 PM', time24: 1400, meal: 'After Lunch', dayPart: 'afternoon', icon: '🍽️' },
+      { id: 'dinner', name: 'Night Pill', dose: '2 Tablets', time: '8:00 PM', time24: 2000, meal: 'Dinner', dayPart: 'night', icon: '🌙' }
+    ];
+
+    const STORAGE_KEY = 'pillReminderSchedule';
+    const DATE_KEY = 'pillReminderLastDate';
+    const NOTIFICATION_KEY = 'pillReminderNotified';
+
+    function requestNotificationPermission() {
+      if (!("Notification" in window)) return;
+      if (Notification.permission !== "granted") {
+        Notification.requestPermission().then(p => console.log("Notification permission:", p));
+      }
+    }
+
+    // ✅ Toast with color type
+    function showToast(message, type = "success") {
+      const toast = document.getElementById("toast");
+      toast.innerText = message;
+      toast.className = "show " + type;
+      setTimeout(() => { toast.className = toast.className.replace("show " + type, ""); }, 4000);
+    }
+
+    function sendNotification(title, body) {
+      if (Notification.permission === "granted") {
+        new Notification(title, {
+          body,
+          icon: 'Gemini_Generated_Image_itxv59itxv59itxv.png',
+          vibrate: [200, 100, 200]
+        });
+      }
+      showToast(body, "success"); // default green toast
+    }
+
+    function loadTakenStatus() { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }
+    function saveTakenStatus(status) { localStorage.setItem(STORAGE_KEY, JSON.stringify(status)); }
+
+    function autoResetSchedule() {
+      const today = new Date().toDateString();
+      const lastDate = localStorage.getItem(DATE_KEY);
+      if (lastDate !== today) {
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(NOTIFICATION_KEY);
+        localStorage.setItem(DATE_KEY, today);
+      }
+      renderSchedule(loadTakenStatus());
+    }
+
+    function getCurrentTime24() {
+      const now = new Date();
+      return (now.getHours() * 100) + now.getMinutes();
+    }
+
+    function findNextPillId(currentStatus) {
+      const currentTime24 = getCurrentTime24();
+      let nextPill = null, minDiff = Infinity;
+      for (const pill of pillSchedule) {
+        if (currentStatus[pill.id]) continue;
+        let diff = pill.time24 - currentTime24;
+        if (diff >= -30 && diff < minDiff) { minDiff = diff; nextPill = pill; }
+      }
+      return nextPill ? nextPill.id : null;
+    }
+
+    function updatePillStatus(pill, isTaken, currentStatus, nextPillId) {
+      const now24 = getCurrentTime24();
+      let statusText = '', statusClass = '';
+      if (isTaken) { statusText = `: Taken! ✅ ${pill.time}`; statusClass = 'taken-state'; }
+      else if (pill.id === nextPillId) { statusText = `: **NEXT DOSE!** 🌟 ${pill.time}`; statusClass = 'next-pill-state'; }
+      else if (now24 >= (pill.time24 - 15) && now24 <= (pill.time24 + 30)) { statusText = `: **DUE SOON!** 🔔 ${pill.time}`; statusClass = 'due-state'; }
+      else if (now24 > pill.time24 + 30) { statusText = `: **MISSED!** 🔴 ${pill.time}`; statusClass = 'missed-state'; }
+      else { statusText = `: ${pill.time}`; }
+      return { statusText, statusClass };
+    }
+
+    function renderSchedule(currentStatus) {
+      const container = document.getElementById('scheduleList');
+      container.innerHTML = '';
+      const nextPillId = findNextPillId(currentStatus);
+
+      pillSchedule.forEach(pill => {
+        const isTaken = currentStatus[pill.id] || false;
+        const takenTime = currentStatus[`${pill.id}_time`] || '';
+        const { statusText, statusClass } = updatePillStatus(pill, isTaken, currentStatus, nextPillId);
+
+        const card = document.createElement('div');
+        card.id = pill.id + 'Card';
+        card.className = `pill-card ${statusClass}`;
+        card.setAttribute('data-timeofday', pill.dayPart);
+
+        let buttonText = isTaken ? `Taken at ${takenTime}` : 'Mark as Taken';
+        let buttonDisabled = isTaken ? 'disabled' : '';
+        let buttonClass = isTaken ? 'taken-button' : '';
+        const pillTitle = pill.meal ? `${pill.name} (${pill.meal})` : pill.name;
+
+        card.innerHTML = `
+          <span class="pill-time">${pill.icon} ${pillTitle} ${statusText}</span>
+          <span class="pill-dose">Dose: ${pill.dose}</span>
+          <button class="take-button ${buttonClass}" id="${pill.id}Button" onclick="markTaken('${pill.id}')" ${buttonDisabled}>
+            ${buttonText}
+          </button>`;
+        container.appendChild(card);
+      });
+    }
+
+    function markTaken(pillId) {
+      const status = loadTakenStatus();
+      const currentTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      status[pillId] = true;
+      status[`${pillId}_time`] = currentTime;
+      saveTakenStatus(status);
+      renderSchedule(status);
+      showToast("Marked as taken ✅", "success");
+    }
+
+    function checkTime() {
+      autoResetSchedule();
+      const status = loadTakenStatus();
+      const now24 = getCurrentTime24();
+      let notified = JSON.parse(localStorage.getItem(NOTIFICATION_KEY) || '{}');
+      pillSchedule.forEach(pill => {
+        if (now24 === pill.time24 && !status[pill.id] && !notified[pill.id]) {
+          const pillTitle = pill.meal ? `${pill.name} (${pill.meal})` : pill.name;
+          sendNotification(`Pill Reminder: ${pill.time}`, `Time to take your ${pillTitle}. Dose: ${pill.dose}.`);
+          notified[pill.id] = true;
+          localStorage.setItem(NOTIFICATION_KEY, JSON.stringify(notified));
+        }
+      });
+      renderSchedule(status);
+    }
+
+    autoResetSchedule();
+    setInterval(checkTime, 60000);
+  </script>
+</body>
+</html>
